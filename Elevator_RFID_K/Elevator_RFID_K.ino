@@ -1,56 +1,75 @@
 /**
-   --------------------------------------------------------------------------------------------------------------------
-   Example sketch/program showing how to read data from more than one PICC to serial.
-   --------------------------------------------------------------------------------------------------------------------
-   This is a MFRC522 library example; for further details and other examples see: https://github.com/miguelbalboa/rfid
+  Arduino program for giving access to restricted area used in an elevator situation.
+  When you svan your card/chip you will be granted access to the fourth floor.
 
-   Example sketch/program showing how to read data from more than one PICC (that is: a RFID Tag or Card) using a
-   MFRC522 based RFID Reader on the Arduino SPI interface.
+  author Komolvae.
 
-   Warning: This may not work! Multiple devices at one SPI are difficult and cause many trouble!! Engineering skill
-            and knowledge are required!
+  Pin layout used:
+  ----------------------------------------------------------------------------------------
+                     MFRC522      Arduino                  Cable cat 5e
+                     Reader/LCD   Yün                      Colour
+  Signal             LEDS         Pin                      Management
+  ----------------------------------------------------------------------------------------
+  //LEDS
+  5V Red Led         +            12                       Orange          2
+  0V Red Led         -            GND + 330k ohm           Black
+  5V Green Led       +            13                       Orange white    2
+  0V Green Led       -            GND + 330k ohm           Black
 
-   @license Released into the public domain.
+  //LCD
+  Ground             LCD 1        GND                      Black
+  VDD(5V)            LCD 2        5V                       Red
+  Cotrast Adjust     LCD 3        Midpin potetiometer
+  Register Select    LCD 4        7                        Orange white    1
+  Read/Write Select  LCD 5        GND                      Black
+  Enable             LCD 6        6~                       Orange          1
+  Data Lines D4      LCD 11       5~                       Brown white     1
+  Data Lines D5      LCD 12       4                        Brown           1
+  Data Lines D6      LCD 13       3~                       Green white     1
+  Data Lines D7      LCD 14       2                        Green           1
+  Backlight Power    LCD 15       5V                       Red
+  Backlight Ground   LCD 16       GND                      Black
 
-   Typical pin layout used:
-   -----------------------------------------------------------------------------------------
-               MFRC522      Arduino       Arduino   Arduino    Arduino          Arduino
-               Reader/PCD   Uno/101       Mega      Nano v3    Leonardo/Micro   Pro Micro
-   Signal      Pin          Pin           Pin       Pin        Pin              Pin
-   -----------------------------------------------------------------------------------------
-   RST/Reset   RST          9             5         D9         RESET/ICSP-5     RST
-   SPI SS 1    SDA(SS)      ** custom, take a unused pin, only HIGH/LOW required *
-   SPI SS 2    SDA(SS)      ** custom, take a unused pin, only HIGH/LOW required *
-   SPI MOSI    MOSI         11 / ICSP-4   51        D11        ICSP-4           16
-   SPI MISO    MISO         12 / ICSP-1   50        D12        ICSP-1           14
-   SPI SCK     SCK          13 / ICSP-3   52        D13        ICSP-3           15
-
-     Simple Work Flow (not limited to) :
-                                     +---------+
-  +----------------------------------->READ TAGS+^------------------------------------------+
-  |                              +--------------------+                                     |
-  |                              |                    |                                     |
-  |                              |                    |                                     |
-  |                         +----v-----+        +-----v----+                                |
-  |                         |MASTER TAG|        |OTHER TAGS|                                |
-  |                         +--+-------+        ++-------------+                            |
-  |                            |                 |             |                            |
-  |                            |                 |             |                            |
-  |                      +-----v---+        +----v----+   +----v------+                     |
-  |         +------------+READ TAGS+---+    |KNOWN TAG|   |UNKNOWN TAG|                     |
-  |         |            +-+-------+   |    +-----------+ +------------------+              |
-  |         |              |           |                |                    |              |
-  |    +----v-----+   +----v----+   +--v--------+     +-v----------+  +------v----+         |
-  |    |MASTER TAG|   |KNOWN TAG|   |UNKNOWN TAG|     |GRANT ACCESS|  |DENY ACCESS|         |
-  |    +----------+   +---+-----+   +-----+-----+     +-----+------+  +-----+-----+         |
-  |                       |               |                 |               |               |
-  |       +----+     +----v------+     +--v---+             |               +--------------->
-  +-------+EXIT|     |DELETE FROM|     |ADD TO|             |                               |
-          +----+     |  EEPROM   |     |EEPROM|             |                               |
-                     +-----------+     +------+             +-------------------------------+
-
-
-*/
+  5v                                                       Blue white      1
+  0V                                                       Blue            1
+  //RFID
+  RFID 3,3V                                                Brown           2
+  RST/Reset          RST          9                        Brown white     2
+  SPI SDA            SDA(SS)      10                       Green white     2
+  SPI MOSI           MOSI         ICSP-4                   Blue white      2
+  SPI MISO           MISO         ICSP-1                   Blue            2
+  SPI SCK            SCK          ICSP-3                   Green           2
+/////////////////////////////////////////////////////////////////////////////////////////////
+                   Simple Work Flow (not limited to) :
+  +<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<+
+  |                       +-------------+                                |
+  |         +-------------+  READ TAGS  +-------------+                  |
+  |         |             +-------------+             |                  | 
+  |         |                                         |                  |
+  |  +------V------+                            +-----V------+           |
+  |  | MASTER TAG  |                            | OTHER TAGS |           |
+  |  +------+------+                            +-----+------+           |
+  |         |                                         |                  |
+  |  +------V------+                          +-------V--------+         |
+  +--|GRANT ACCESS |                          |                |         |
+  |  +------+------+                   +------V------+  +------V------+  |
+  |         |                          |  KNOW TAGS  |  |UNKNOWN TAGS |  |
+  |  +------V------+                   +------+------+  +------+------+  |
+  |  | MASTER TAG  |                          |                |         |
+  |  +------+------+                   +------V------+  +------V------+  |
+  |         |                          |GRANT ACCESS |  | DENY ACCESS |  |
+  |  +------V------+                   +------+------+  +------+------+  |
+  |  | UNKNOWN TAG |                          |                |         |
+  |  +------+------+                          |                +--------->
+  |         |                                 |                          |
+  |  +------V------+                          +--------------------------+
+  |  |   ADD TO    |                                           
+  |  |  USER LIST  |                                                            
+  |  +-------------+                              
+  |                  +------------+
+  +------------------+    EXIT    |
+                     +------------+
+*/                   
 
 #include <SPI.h>
 #include <MFRC522.h>
@@ -68,7 +87,7 @@
 
 #define RST_PIN         9          // Configurable, see typical pin layout above
 #define SS_1_PIN        10         // Configurable, take a unused pin, only HIGH/LOW required, must be diffrent to SS 2
-#define SS_2_PIN        11          // Configurable, take a unused pin, only HIGH/LOW required, must be diffrent to SS 1
+#define SS_2_PIN        11         // Configurable, take a unused pin, only HIGH/LOW required, must be diffrent to SS 1
 
 #define NR_OF_READERS   2
 
@@ -97,7 +116,7 @@ const bool PLS_SIGNAL = 8;    //ModBus????
 boolean door_opened = false;
 boolean first_read = false;
 boolean normal_mode = true;
-boolean countdown = false;
+boolean countdown = false; 
 int timer = 0;
 int user_added = 0;
 int  add_ID_counter = 0;
