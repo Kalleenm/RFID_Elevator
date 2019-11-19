@@ -75,16 +75,6 @@
 #include <MFRC522.h>
 #include <EEPROM.h>
 
-#define COMMON_ANODE
-
-#ifdef COMMON_ANODE
-#define LED_ON LOW
-#define LED_OFF HIGH
-#else
-#define LED_ON HIGH
-#define LED_OFF LOW
-#endif
-
 #define RST_PIN         9          // Configurable, see typical pin layout above
 #define SS_1_PIN        10         // Configurable, take a unused pin, only HIGH/LOW required, must be diffrent to SS 2
 #define SS_2_PIN        11         // Configurable, take a unused pin, only HIGH/LOW required, must be diffrent to SS 1
@@ -136,8 +126,8 @@ void setup() {
   pinMode(GREEN_LED, OUTPUT);
   pinMode(PLS_SIGNAL, OUTPUT);
 
-  digitalWrite(RED_LED, LED_OFF);
-  digitalWrite(GREEN_LED, LED_OFF);
+  digitalWrite(RED_LED, LOW);
+  digitalWrite(GREEN_LED, LOW);
   digitalWrite(PLS_SIGNAL, LOW);
 
   for (uint8_t reader = 0; reader < NR_OF_READERS; reader++) {
@@ -186,7 +176,7 @@ void loop() {
         lcd.setCursor(0, 1);
         lcd.print("                ");
         Serial.println("Last action: New user canceled");
-        startTimer(4000);
+        delay(3000);
         lcd.setCursor(0, 0);
         lcd.print("Scan card to be");
         lcd.setCursor(0, 1);
@@ -225,7 +215,7 @@ void loop() {
 
 
       add_ID_counter = add_ID_counter + 1;
-      startTimer(10);
+      delay(10);
     }
 
 
@@ -256,16 +246,16 @@ void loop() {
               lcd.print("Place New ID in:");
               lcd.setCursor(0, 1);
               lcd.print("       3        ");
-              startTimer(1000);
+              delay(1000);
               lcd.setCursor(0, 1);
               lcd.print("       2        ");
-              startTimer(1000);
+              delay(1000);
               lcd.setCursor(0, 1);
               lcd.print("       1       ");
-              startTimer(1000);
+              delay(1000);
               lcd.setCursor(0, 1);
               lcd.print("      NOW!      ");
-              Serial.println("Last action: New user added!");
+              delay(5000);
 
             }
             else
@@ -287,7 +277,7 @@ void loop() {
               first_read = true;
               countdown = true;
               granted();
-              startTimer(5000);
+              delay(5000);
               lcd.setCursor(0, 0);
               lcd.print("Put  MASTER card");
               lcd.setCursor(0, 1);
@@ -304,12 +294,12 @@ void loop() {
               door_opened = true;
               first_read = true;
               granted();
-              startTimer(5000);
+              delay(5000);
               lcd.setCursor(0, 0);
               lcd.print("Scan card to be");
               lcd.setCursor(0, 1);
               lcd.print("granted ACCESS!");
-              Serial.println("Last use: USER2\n");
+              Serial.println("Last use: USER2");
 
             }
             else if (compareArray(ActualUID, USER3))
@@ -321,7 +311,7 @@ void loop() {
               door_opened = true;
               first_read = true;
               granted();
-              startTimer(5000);
+              delay(5000);
               lcd.setCursor(0, 0);
               lcd.print("Scan card to be");
               lcd.setCursor(0, 1);
@@ -337,7 +327,7 @@ void loop() {
               door_opened = true;
               first_read = true;
               granted();
-              startTimer(5000);
+              delay(5000);
               lcd.setCursor(0, 0);
               lcd.print("Scan card to be");
               lcd.setCursor(0, 1);
@@ -353,7 +343,7 @@ void loop() {
               door_opened = true;
               first_read = true;
               granted();
-              startTimer(5000);
+              delay(5000);
               lcd.setCursor(0, 0);
               lcd.print("Scan card to be");
               lcd.setCursor(0, 1);
@@ -369,7 +359,7 @@ void loop() {
               door_opened = false;
               first_read = false;
               denied();
-              startTimer(3000);
+              delay(3000);
               lcd.setCursor(0, 0);
               lcd.print("Scan card to be");
               lcd.setCursor(0, 1);
@@ -425,7 +415,7 @@ void loop() {
             lcd.print("   as  USER 5   ");
             normal_mode = true;
             first_read = false;
-            startTimer(3000);
+            delay(3000);
             Serial.println("New user stored as USER 5");
             lcd.setCursor(0, 0);
             lcd.print("Scan card to be");
@@ -446,7 +436,7 @@ void loop() {
             lcd.print("   as  USER 4   ");
             normal_mode = true;
             first_read = false;
-            startTimer(3000);            
+            delay(3000);            
             Serial.println("New user stored as USER 4");
             lcd.setCursor(0, 0);
             lcd.print("Scan card to be");
@@ -468,7 +458,7 @@ void loop() {
             lcd.print("   as  USER 3   ");
             normal_mode = true;
             first_read = false;
-            startTimer(3000);
+            delay(3000);
             Serial.println("New user stored as USER 3");
             lcd.setCursor(0, 0);
             lcd.print("Scan card to be");
@@ -489,7 +479,7 @@ void loop() {
             lcd.print("   as  USER 2   ");
             normal_mode = true;
             first_read = false;
-            startTimer(3000);
+            delay(3000);
             lcd.setCursor(0, 0);
             lcd.print("Scan card to be");
             lcd.setCursor(0, 1);
@@ -516,26 +506,24 @@ void dump_byte_array(byte *buffer, byte bufferSize) {
 
 /////////////////////////////////////////  Access Granted    ///////////////////////////////////
 void granted () {
-  digitalWrite(RED_LED, LED_OFF);   // Turn off red LED
-  digitalWrite(GREEN_LED, LED_ON);  // Turn on green LED
+  digitalWrite(RED_LED, LOW);       // Make sure the red LED is off
+  digitalWrite(GREEN_LED, HIGH);    // Make sure the green LED turns on
   digitalWrite(PLS_SIGNAL, HIGH);   // Give access to fourth floor
-  startTimer (5000);                // Hold door lock open for given seconds
-  digitalWrite(PLS_SIGNAL, LOW);    // Turn off acccess to fourth floor
+  delay (5000);                     
+  digitalWrite(PLS_SIGNAL, LOW);    // Make sure the access to the fourth floor is closed after 5 seconds
+  digitalWrite(RED_LED, LOW);       // Make sure red LED is off
+  digitalWrite(GREEN_LED, LOW);     // Make sure green LED is off after 5 seconds
 }
 
 ///////////////////////////////////////// Access Denied  ///////////////////////////////////
 void denied() {
-  digitalWrite(GREEN_LED, LED_OFF); // Make sure green LED is off
-  digitalWrite(RED_LED, LED_ON);    // Make sure red LED is off
-  digitalWrite(PLS_SIGNAL, LOW);    // Make sure PLS signal is low
-  startTimer(1000);
-}
-
-//////////////////////////////////////// Normal Mode Led  ///////////////////////////////////
-void normalModeOn () {
-  digitalWrite(RED_LED, LED_OFF);  // Make sure Red LED is off
-  digitalWrite(GREEN_LED, LED_OFF);  // Make sure Green LED is off
-  digitalWrite(PLS_SIGNAL, LOW);    // Make sure signal to PLS is Low
+  digitalWrite(RED_LED, HIGH);     // Make sure red LED is on
+  digitalWrite(GREEN_LED, LOW);    // Make sure green LED is off
+  digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
+  delay(3000);
+  digitalWrite(PLS_SIGNAL, LOW);    // Turn off acccess to fourth floor
+  digitalWrite(GREEN_LED, LOW);     // Make sure the green LED is off
+  digitalWrite(RED_LED, LOW);       // Make sure the red LED is off after 2 seconds
 }
 
 
