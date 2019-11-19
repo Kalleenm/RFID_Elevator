@@ -39,12 +39,12 @@
   SPI MOSI           MOSI         ICSP-4                   Blue white      2
   SPI MISO           MISO         ICSP-1                   Blue            2
   SPI SCK            SCK          ICSP-3                   Green           2
-/////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////
                    Simple Work Flow (not limited to) :
   +<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<+
   |                       +-------------+                                |
   |         +-------------+  READ TAGS  +-------------+                  |
-  |         |             +-------------+             |                  | 
+  |         |             +-------------+             |                  |
   |         |                                         |                  |
   |  +------V------+                            +-----V------+           |
   |  | MASTER TAG  |                            | OTHER TAGS |           |
@@ -63,13 +63,13 @@
   |  +------+------+                          |                +--------->
   |         |                                 |                          |
   |  +------V------+                          +--------------------------+
-  |  |   ADD TO    |                                           
-  |  |  USER LIST  |                                                            
-  |  +-------------+                              
+  |  |   ADD TO    |
+  |  |  USER LIST  |
+  |  +-------------+
   |                  +------------+
   +------------------+    EXIT    |
                      +------------+
-*/                   
+*/
 
 #include <SPI.h>
 #include <MFRC522.h>
@@ -116,10 +116,12 @@ const bool PLS_SIGNAL = 8;    //ModBus????
 boolean door_opened = false;
 boolean first_read = false;
 boolean normal_mode = true;
-boolean countdown = false; 
+boolean countdown = false;
 int timer = 0;
 int user_added = 0;
 int  add_ID_counter = 0;
+
+unsigned long nextTimeout = 0;
 
 /**
    Initialize.
@@ -127,7 +129,7 @@ int  add_ID_counter = 0;
 void setup() {
   SPI.begin();        // Init SPI bus
   Serial.begin(9600); // Initialize serial communications with the PC
-  while (!Serial);    // Do nothing if no serial port is opened (added for Arduinos based on ATMEGA32U4)
+  while (!Serial);    // Do nothing if no serial monitor is opened (added for Arduinos based on ATMEGA32U4)
 
   // Arduino Pin Comfiguration
   pinMode(RED_LED, OUTPUT);
@@ -141,7 +143,7 @@ void setup() {
   for (uint8_t reader = 0; reader < NR_OF_READERS; reader++) {
     mfrc522[reader].PCD_Init(ssPins[reader], RST_PIN); // Init each MFRC522 card
     Serial.print(F("Reader "));
-    Serial.print(reader);
+    Serial.print(reader + 1);
     Serial.print(F(": "));
     mfrc522[reader].PCD_DumpVersionToSerial();
   }
@@ -149,9 +151,9 @@ void setup() {
   //Config of the LCD screen
   lcd.begin(16, 2);
   lcd.setCursor(0, 0);
-  lcd.print("Place card here!");
+  lcd.print("Scan card to be");
   lcd.setCursor(0, 1);
-  lcd.print("                ");
+  lcd.print("granted ACCESS!");
 }
 
 byte ActualUID[4];                     //This will store the ID each time we read a new ID code
@@ -183,11 +185,12 @@ void loop() {
         lcd.print("New ID  canceled");
         lcd.setCursor(0, 1);
         lcd.print("                ");
-        delay(4000);
+        Serial.println("Last action: New user canceled");
+        startTimer(4000);
         lcd.setCursor(0, 0);
-        lcd.print("Place card here!");
+        lcd.print("Scan card to be");
         lcd.setCursor(0, 1);
-        lcd.print("                ");
+        lcd.print("granted ACCESS!");
       }
 
       if (add_ID_counter == 50)
@@ -222,7 +225,7 @@ void loop() {
 
 
       add_ID_counter = add_ID_counter + 1;
-      delay(10);
+      startTimer(10);
     }
 
 
@@ -253,15 +256,16 @@ void loop() {
               lcd.print("Place New ID in:");
               lcd.setCursor(0, 1);
               lcd.print("       3        ");
-              delay(1000);
+              startTimer(1000);
               lcd.setCursor(0, 1);
               lcd.print("       2        ");
-              delay(1000);
+              startTimer(1000);
               lcd.setCursor(0, 1);
               lcd.print("       1       ");
-              delay(1000);
+              startTimer(1000);
               lcd.setCursor(0, 1);
               lcd.print("      NOW!      ");
+              Serial.println("Last action: New user added!");
 
             }
             else
@@ -282,11 +286,13 @@ void loop() {
               door_opened = true;
               first_read = true;
               countdown = true;
-              delay(3000);
+              granted();
+              startTimer(5000);
               lcd.setCursor(0, 0);
               lcd.print("Put  MASTER card");
               lcd.setCursor(0, 1);
               lcd.print("for new ID     6");
+              Serial.println("Last use: MASTER CARD");
 
             }
             else if (compareArray(ActualUID, USER2))
@@ -297,11 +303,14 @@ void loop() {
               lcd.print("     USER 2     ");
               door_opened = true;
               first_read = true;
-              delay(3000);
+              granted();
+              startTimer(5000);
               lcd.setCursor(0, 0);
-              lcd.print("Last use: USER2");
+              lcd.print("Scan card to be");
               lcd.setCursor(0, 1);
-              lcd.print("  Door OPENED  ");
+              lcd.print("granted ACCESS!");
+              Serial.println("Last use: USER2\n");
+
             }
             else if (compareArray(ActualUID, USER3))
             {
@@ -311,11 +320,13 @@ void loop() {
               lcd.print("     USER 3     ");
               door_opened = true;
               first_read = true;
-              delay(3000);
+              granted();
+              startTimer(5000);
               lcd.setCursor(0, 0);
-              lcd.print("Last use: USER3");
+              lcd.print("Scan card to be");
               lcd.setCursor(0, 1);
-              lcd.print("  Door OPENED  ");
+              lcd.print("granted ACCESS!");
+              Serial.println("Last use: USER3");
             }
             else if (compareArray(ActualUID, USER4))
             {
@@ -325,11 +336,13 @@ void loop() {
               lcd.print("     USER 4     ");
               door_opened = true;
               first_read = true;
-              delay(3000);
+              granted();
+              startTimer(5000);
               lcd.setCursor(0, 0);
-              lcd.print("Last use: USER4");
+              lcd.print("Scan card to be");
               lcd.setCursor(0, 1);
-              lcd.print("  Door OPENED  ");
+              lcd.print("granted ACCESS!");
+              Serial.println("Last use: USER4");
             }
             else if (compareArray(ActualUID, USER5))
             {
@@ -339,11 +352,13 @@ void loop() {
               lcd.print("     USER 5     ");
               door_opened = true;
               first_read = true;
-              delay(3000);
+              granted();
+              startTimer(5000);
               lcd.setCursor(0, 0);
-              lcd.print("Last use: USER5");
+              lcd.print("Scan card to be");
               lcd.setCursor(0, 1);
-              lcd.print("  Door OPENED  ");
+              lcd.print("granted ACCESS!");
+              Serial.println("Last use: USER5");
             }
             else
             {
@@ -353,11 +368,13 @@ void loop() {
               lcd.print("   UNKNOWN ID   ");
               door_opened = false;
               first_read = false;
-              delay(3000);
+              denied();
+              startTimer(3000);
               lcd.setCursor(0, 0);
-              lcd.print("Place card here!");
+              lcd.print("Scan card to be");
               lcd.setCursor(0, 1);
-              lcd.print("  Door CLOSED  ");
+              lcd.print("granted ACCESS!");
+              Serial.println("Last use: UNKNOWN ID, Access DENIED");
             }
           }
         }
@@ -389,9 +406,10 @@ void loop() {
             lcd.setCursor(0, 1);
             lcd.print("      FULL      ");
             lcd.setCursor(0, 0);
-            lcd.print("Place card here!");
+            lcd.print("Scan card to be");
             lcd.setCursor(0, 1);
-            lcd.print("                ");
+            lcd.print("granted ACCESS!");
+            Serial.println("Last action: User list is full.");
           }
 
           if (user_added == 3)
@@ -407,11 +425,12 @@ void loop() {
             lcd.print("   as  USER 5   ");
             normal_mode = true;
             first_read = false;
-            delay(3000);
+            startTimer(3000);
+            Serial.println("New user stored as USER 5");
             lcd.setCursor(0, 0);
-            lcd.print("Place card here!");
+            lcd.print("Scan card to be");
             lcd.setCursor(0, 1);
-            lcd.print("                ");
+            lcd.print("granted ACCESS!");
           }
 
           if (user_added == 2)
@@ -427,11 +446,13 @@ void loop() {
             lcd.print("   as  USER 4   ");
             normal_mode = true;
             first_read = false;
-            delay(3000);
+            startTimer(3000);            
+            Serial.println("New user stored as USER 4");
             lcd.setCursor(0, 0);
-            lcd.print("Place card here!");
+            lcd.print("Scan card to be");
             lcd.setCursor(0, 1);
-            lcd.print("                ");
+            lcd.print("granted ACCESS!");
+
           }
 
           if (user_added == 1)
@@ -447,11 +468,12 @@ void loop() {
             lcd.print("   as  USER 3   ");
             normal_mode = true;
             first_read = false;
-            delay(3000);
+            startTimer(3000);
+            Serial.println("New user stored as USER 3");
             lcd.setCursor(0, 0);
-            lcd.print("Place card here!");
+            lcd.print("Scan card to be");
             lcd.setCursor(0, 1);
-            lcd.print("                ");
+            lcd.print("granted ACCESS!");
           }
 
           if (user_added == 0)
@@ -467,11 +489,12 @@ void loop() {
             lcd.print("   as  USER 2   ");
             normal_mode = true;
             first_read = false;
-            delay(3000);
+            startTimer(3000);
             lcd.setCursor(0, 0);
-            lcd.print("Place card here!");
+            lcd.print("Scan card to be");
             lcd.setCursor(0, 1);
-            lcd.print("                ");
+            lcd.print("granted ACCESS!");
+            Serial.println("New user stored as USER 2");
           }
 
         }
@@ -482,7 +505,7 @@ void loop() {
 }
 
 /**
-   Helper routine to dump a byte array as hex values to Serial.
+  Helper routine to dump a byte array as hex values to Serial.
 */
 void dump_byte_array(byte *buffer, byte bufferSize) {
   for (byte i = 0; i < bufferSize; i++) {
@@ -492,77 +515,29 @@ void dump_byte_array(byte *buffer, byte bufferSize) {
 }
 
 /////////////////////////////////////////  Access Granted    ///////////////////////////////////
-void granted ( uint16_t setDelay) {
-  digitalWrite(RED_LED, LED_OFF);  // Turn off red LED
-  digitalWrite(GREEN_LED, LED_ON);   // Turn on green LED
-  digitalWrite(PLS_SIGNAL, HIGH);     // Unlock door!
-  delay(setDelay);          // Hold door lock open for given seconds
-  digitalWrite(PLS_SIGNAL, LOW);    // Relock door
-  delay(1000);            // Hold green LED on for a second
+void granted () {
+  digitalWrite(RED_LED, LED_OFF);   // Turn off red LED
+  digitalWrite(GREEN_LED, LED_ON);  // Turn on green LED
+  digitalWrite(PLS_SIGNAL, HIGH);   // Give access to fourth floor
+  startTimer (5000);                // Hold door lock open for given seconds
+  digitalWrite(PLS_SIGNAL, LOW);    // Turn off acccess to fourth floor
 }
 
 ///////////////////////////////////////// Access Denied  ///////////////////////////////////
 void denied() {
-  digitalWrite(GREEN_LED, LED_OFF);  // Make sure green LED is off
-  digitalWrite(RED_LED, LED_ON);   // Turn on red LED
-  delay(1000);
-}
-
-///////////////////////////////////////// Cycle Leds (Program Mode) ///////////////////////////////////
-void cycleLeds() {
-  digitalWrite(RED_LED, LED_OFF);  // Make sure red LED is off
-  digitalWrite(GREEN_LED, LED_ON);   // Make sure green LED is on
-  delay(200);
-  digitalWrite(RED_LED, LED_OFF);  // Make sure red LED is off
-  digitalWrite(GREEN_LED, LED_OFF);  // Make sure green LED is off
-  delay(200);
-  digitalWrite(RED_LED, LED_ON);   // Make sure red LED is on
-  digitalWrite(GREEN_LED, LED_OFF);  // Make sure green LED is off
-  delay(200);
+  digitalWrite(GREEN_LED, LED_OFF); // Make sure green LED is off
+  digitalWrite(RED_LED, LED_ON);    // Make sure red LED is off
+  digitalWrite(PLS_SIGNAL, LOW);    // Make sure PLS signal is low
+  startTimer(1000);
 }
 
 //////////////////////////////////////// Normal Mode Led  ///////////////////////////////////
 void normalModeOn () {
   digitalWrite(RED_LED, LED_OFF);  // Make sure Red LED is off
   digitalWrite(GREEN_LED, LED_OFF);  // Make sure Green LED is off
-  digitalWrite(PLS_SIGNAL, HIGH);    // Make sure Door is Locked
+  digitalWrite(PLS_SIGNAL, LOW);    // Make sure signal to PLS is Low
 }
 
-///////////////////////////////////////// Write Success to EEPROM   ///////////////////////////////////
-// Flashes the green LED 3 times to indicate a successful write to EEPROM
-void successWrite() {
-  digitalWrite(RED_LED, LED_OFF);  // Make sure red LED is off
-  digitalWrite(GREEN_LED, LED_OFF);  // Make sure green LED is on
-  delay(200);
-  digitalWrite(GREEN_LED, LED_ON);   // Make sure green LED is on
-  delay(200);
-  digitalWrite(GREEN_LED, LED_OFF);  // Make sure green LED is off
-  delay(200);
-  digitalWrite(GREEN_LED, LED_ON);   // Make sure green LED is on
-  delay(200);
-  digitalWrite(GREEN_LED, LED_OFF);  // Make sure green LED is off
-  delay(200);
-  digitalWrite(GREEN_LED, LED_ON);   // Make sure green LED is on
-  delay(200);
-}
-
-///////////////////////////////////////// Write Failed to EEPROM   ///////////////////////////////////
-// Flashes the red LED 3 times to indicate a failed write to EEPROM
-void failedWrite() {
-  digitalWrite(RED_LED, LED_OFF);  // Make sure red LED is off
-  digitalWrite(GREEN_LED, LED_OFF);  // Make sure green LED is off
-  delay(200);
-  digitalWrite(RED_LED, LED_ON);   // Make sure red LED is on
-  delay(200);
-  digitalWrite(RED_LED, LED_OFF);  // Make sure red LED is off
-  delay(200);
-  digitalWrite(RED_LED, LED_ON);   // Make sure red LED is on
-  delay(200);
-  digitalWrite(RED_LED, LED_OFF);  // Make sure red LED is off
-  delay(200);
-  digitalWrite(RED_LED, LED_ON);   // Make sure red LED is on
-  delay(200);
-}
 
 //Compare the 4 bytes of the users and the received ID
 boolean compareArray(byte array1[], byte array2[])
@@ -572,4 +547,15 @@ boolean compareArray(byte array1[], byte array2[])
   if (array1[2] != array2[2])return (false);
   if (array1[3] != array2[3])return (false);
   return (true);
+}
+
+/**
+  Starts the timer and set the timer to expire after the
+  number of milliseconds given by the parameter duration.
+
+  @param duration The number of milliseconds until the timer expires.
+*/
+void startTimer(unsigned long duration)
+{
+  nextTimeout = millis() + duration;
 }
