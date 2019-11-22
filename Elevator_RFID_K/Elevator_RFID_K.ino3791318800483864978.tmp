@@ -32,11 +32,10 @@
 
   5v                                                       Blue white      1
   0V                                                       Blue            1
-  
   //RFID
   RFID 3,3V                                                Brown           2
   RST/Reset          RST          9                        Brown white     2
-  SPI SDA            SDA(SS)      10,11                    Green white     2
+  SPI SDA            SDA(SS)      10                       Green white     2
   SPI MOSI           MOSI         ICSP-4                   Blue white      2
   SPI MISO           MISO         ICSP-1                   Blue            2
   SPI SCK            SCK          ICSP-3                   Green           2
@@ -77,8 +76,8 @@
 #include <EEPROM.h>
 
 #define RST_PIN         9          // Configurable, see typical pin layout above
-#define SS_1_PIN        10        // Configurable, take a unused pin, only HIGH/LOW required, must be diffrent to SS 2
-#define SS_2_PIN        11         // Configurable, take a unused pin, only HIGH/LOW required, must be diffrent to SS 1
+#define SS_1_PIN        11         // Configurable, take a unused pin, only HIGH/LOW required, must be diffrent to SS 2
+#define SS_2_PIN        10         // Configurable, take a unused pin, only HIGH/LOW required, must be diffrent to SS 1
 
 #define NR_OF_READERS   2
 
@@ -149,7 +148,7 @@ void setup() {
 
 byte ActualUID[4];                     //This will store the ID each time we read a new ID code
 
-byte USER1[4] = {0x77, 0x5A, 0x63, 0x3C} ; //Master ID code Change it for yor tag. First use the READ exampel and check your ID
+byte USER1[4] = {0x25, 0x8D, 0x1F, 0xE3} ; //Master ID code Change it for yor tag. First use the READ exampel and check your ID
 
 byte USER2[4] = {0x00, 0x00, 0x00, 0x00} ; //Empty ID of USER2
 byte USER3[4] = {0x00, 0x00, 0x00, 0x00} ; //Empty ID of USER3
