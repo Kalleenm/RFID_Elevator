@@ -32,7 +32,7 @@
 
   5v                                                       Blue white      1
   0V                                                       Blue            1
-  
+
   //RFID
   RFID 3,3V                                                Brown           2
   RST/Reset          RST          9                        Brown white     2
@@ -171,7 +171,7 @@ void loop() {
       {
         countdown = false;
         first_read = false;
-        add_ID_counter = 0;
+        add_ID_counter = millis();
         lcd.setCursor(0, 0);
         lcd.print("New ID  canceled");
         lcd.setCursor(0, 1);
@@ -184,39 +184,34 @@ void loop() {
         lcd.print("granted ACCESS!");
       }
 
-      if (add_ID_counter == 50)
+      long timeNow = millis();
+
+      if (timeNow - add_ID_counter == 5000)
+      {
+        lcd.setCursor(15, 1);
+        lcd.print("1");
+      } else if (timeNow - add_ID_counter >= 1000)
+      {
+        lcd.setCursor(15, 1);
+        lcd.print("2");
+      } else if (timeNow - add_ID_counter >= 2000)
+      {
+        lcd.setCursor(15, 1);
+        lcd.print("3");
+      } else if (timeNow - add_ID_counter >= 3000)
+      {
+        lcd.setCursor(15, 1);
+        lcd.print("4");
+      } else if (timeNow - add_ID_counter >= 4000)
       {
         lcd.setCursor(15, 1);
         lcd.print("5");
       }
 
-      if (add_ID_counter == 100)
-      {
-        lcd.setCursor(15, 1);
-        lcd.print("4");
-      }
-
-      if (add_ID_counter == 150)
-      {
-        lcd.setCursor(15, 1);
-        lcd.print("3");
-      }
-
-      if (add_ID_counter == 200)
-      {
-        lcd.setCursor(15, 1);
-        lcd.print("2");
-      }
-
-      if (add_ID_counter == 250)
-      {
-        lcd.setCursor(15, 1);
-        lcd.print("1");
-      }
 
 
-      add_ID_counter = add_ID_counter + 1;
-      delay(10);
+      //add_ID_counter = add_ID_counter + 1;
+      //delay(10);
     }
 
 
@@ -256,7 +251,6 @@ void loop() {
               delay(1000);
               lcd.setCursor(0, 1);
               lcd.print("      NOW!      ");
-              delay(5000);
 
             }
             else
@@ -278,7 +272,6 @@ void loop() {
               first_read = true;
               countdown = true;
               granted();
-              delay(5000);
               lcd.setCursor(0, 0);
               lcd.print("Put  MASTER card");
               lcd.setCursor(0, 1);
@@ -288,68 +281,19 @@ void loop() {
             }
             else if (compareArray(ActualUID, USER2))
             {
-              lcd.setCursor(0, 0);
-              lcd.print(" Access granted ");
-              lcd.setCursor(0, 1);
-              lcd.print("     USER 2     ");
-              door_opened = true;
-              first_read = true;
-              granted();
-              delay(5000);
-              lcd.setCursor(0, 0);
-              lcd.print("Scan card to be");
-              lcd.setCursor(0, 1);
-              lcd.print("granted ACCESS!");
-              Serial.println("Last use: USER2");
-
+              printAccessGranted(2);
             }
             else if (compareArray(ActualUID, USER3))
             {
-              lcd.setCursor(0, 0);
-              lcd.print(" Access granted ");
-              lcd.setCursor(0, 1);
-              lcd.print("     USER 3     ");
-              door_opened = true;
-              first_read = true;
-              granted();
-              delay(5000);
-              lcd.setCursor(0, 0);
-              lcd.print("Scan card to be");
-              lcd.setCursor(0, 1);
-              lcd.print("granted ACCESS!");
-              Serial.println("Last use: USER3");
+              printAccessGranted(3);
             }
             else if (compareArray(ActualUID, USER4))
             {
-              lcd.setCursor(0, 0);
-              lcd.print(" Access granted ");
-              lcd.setCursor(0, 1);
-              lcd.print("     USER 4     ");
-              door_opened = true;
-              first_read = true;
-              granted();
-              delay(5000);
-              lcd.setCursor(0, 0);
-              lcd.print("Scan card to be");
-              lcd.setCursor(0, 1);
-              lcd.print("granted ACCESS!");
-              Serial.println("Last use: USER4");
+              printAccessGranted(4);
             }
             else if (compareArray(ActualUID, USER5))
             {
-              lcd.setCursor(0, 0);
-              lcd.print(" Access granted ");
-              lcd.setCursor(0, 1);
-              lcd.print("     USER 5     ");
-              door_opened = true;
-              first_read = true;
-              granted();
-              delay(5000);
-              lcd.setCursor(0, 0);
-              lcd.print("Scan card to be");
-              lcd.setCursor(0, 1);
-              lcd.print("granted ACCESS!");
-              Serial.println("Last use: USER5");
+              printAccessGranted(5);
             }
             else
             {
@@ -360,7 +304,6 @@ void loop() {
               door_opened = false;
               first_read = false;
               denied();
-              delay(3000);
               lcd.setCursor(0, 0);
               lcd.print("Scan card to be");
               lcd.setCursor(0, 1);
@@ -390,7 +333,7 @@ void loop() {
           }
 
           //Compare the read ID and the stored USERS
-          if (user_added == 4)
+          if (user_added == 4) // FULL
           {
             lcd.setCursor(0, 0);
             lcd.print("  User list is  ");
@@ -403,98 +346,35 @@ void loop() {
             Serial.println("Last action: User list is full.");
           }
 
-          if (user_added == 3)
+          if (user_added == 3) // 5
           {
-            USER5[0] = ActualUID[0];
-            USER5[1] = ActualUID[1];
-            USER5[2] = ActualUID[2];
-            USER5[3] = ActualUID[3];
-            user_added = user_added + 1;
-            lcd.setCursor(0, 0);
-            lcd.print("New user stored ");
-            lcd.setCursor(0, 1);
-            lcd.print("   as  USER 5   ");
-            normal_mode = true;
-            first_read = false;
-            delay(3000);
-            Serial.println("New user stored as USER 5");
-            lcd.setCursor(0, 0);
-            lcd.print("Scan card to be");
-            lcd.setCursor(0, 1);
-            lcd.print("granted ACCESS!");
+            printAddedUser(5, USER5);
           }
 
-          if (user_added == 2)
+          if (user_added == 2) // 4
           {
-            USER4[0] = ActualUID[0];
-            USER4[1] = ActualUID[1];
-            USER4[2] = ActualUID[2];
-            USER4[3] = ActualUID[3];
-            user_added = user_added + 1;
-            lcd.setCursor(0, 0);
-            lcd.print("New user stored ");
-            lcd.setCursor(0, 1);
-            lcd.print("   as  USER 4   ");
-            normal_mode = true;
-            first_read = false;
-            delay(3000);            
-            Serial.println("New user stored as USER 4");
-            lcd.setCursor(0, 0);
-            lcd.print("Scan card to be");
-            lcd.setCursor(0, 1);
-            lcd.print("granted ACCESS!");
+            printAddedUser(4, USER4);
 
           }
 
-          if (user_added == 1)
+          if (user_added == 1) //3
           {
-            USER3[0] = ActualUID[0];
-            USER3[1] = ActualUID[1];
-            USER3[2] = ActualUID[2];
-            USER3[3] = ActualUID[3];
-            user_added = user_added + 1;
-            lcd.setCursor(0, 0);
-            lcd.print("New user stored ");
-            lcd.setCursor(0, 1);
-            lcd.print("   as  USER 3   ");
-            normal_mode = true;
-            first_read = false;
-            delay(3000);
-            Serial.println("New user stored as USER 3");
-            lcd.setCursor(0, 0);
-            lcd.print("Scan card to be");
-            lcd.setCursor(0, 1);
-            lcd.print("granted ACCESS!");
+            printAddedUser(3, USER3);
           }
 
-          if (user_added == 0)
+          if (user_added == 0) // 2
           {
-            USER2[0] = ActualUID[0];
-            USER2[1] = ActualUID[1];
-            USER2[2] = ActualUID[2];
-            USER2[3] = ActualUID[3];
-            user_added = user_added + 1;
-            lcd.setCursor(0, 0);
-            lcd.print("New user stored ");
-            lcd.setCursor(0, 1);
-            lcd.print("   as  USER 2   ");
-            normal_mode = true;
-            first_read = false;
-            delay(3000);
-            lcd.setCursor(0, 0);
-            lcd.print("Scan card to be");
-            lcd.setCursor(0, 1);
-            lcd.print("granted ACCESS!");
-            Serial.println("New user stored as USER 2");
+            printAddedUser(2, USER2);
           }
 
         }
 
       }
   }//end  ID add mode
-
 }
 
+
+//////////////////////////////////////////////// FUNCTIONS //////////////////////////////////////////////////
 /**
   Helper routine to dump a byte array as hex values to Serial.
 */
@@ -510,10 +390,11 @@ void granted () {
   digitalWrite(RED_LED, LOW);       // Make sure the red LED is off
   digitalWrite(GREEN_LED, HIGH);    // Make sure the green LED turns on
   digitalWrite(PLS_SIGNAL, HIGH);   // Give access to fourth floor
-  delay (5000);                     
+  delay (5000);
   digitalWrite(PLS_SIGNAL, LOW);    // Make sure the access to the fourth floor is closed after 5 seconds
   digitalWrite(RED_LED, LOW);       // Make sure red LED is off
   digitalWrite(GREEN_LED, LOW);     // Make sure green LED is off after 5 seconds
+  lcd.clear();
 }
 
 ///////////////////////////////////////// Access Denied  ///////////////////////////////////
@@ -525,10 +406,57 @@ void denied() {
   digitalWrite(PLS_SIGNAL, LOW);    // Turn off acccess to fourth floor
   digitalWrite(GREEN_LED, LOW);     // Make sure the green LED is off
   digitalWrite(RED_LED, LOW);       // Make sure the red LED is off after 2 seconds
+  lcd.clear();
+}
+
+////////////////////////////////////// Print Access to LCD  ///////////////////////////////////
+void printAccessGranted(int user)
+{
+  lcd.clear();
+  lcd.setCursor(1, 0);
+  lcd.print("Access granted");
+  lcd.setCursor(5, 1);
+  lcd.print("USER ");
+  lcd.print(user);
+  door_opened = true;
+  first_read = true;
+  granted();
+  lcd.setCursor(0, 0);
+  lcd.print("Scan card to be");
+  lcd.setCursor(0, 1);
+  lcd.print("granted ACCESS!");
+  Serial.print("Last use: USER");
+  Serial.print(user);
+  Serial.println("");
+}
+
+//////////////////////////////////// Print added user to LCD ///////////////////////////////
+void printAddedUser(int user, byte USER[])
+{
+  USER[0] = ActualUID[0];
+  USER[1] = ActualUID[1];
+  USER[2] = ActualUID[2];
+  USER[3] = ActualUID[3];
+  user_added = user_added + 1;
+  lcd.setCursor(0, 0);
+  lcd.print("New user stored ");
+  lcd.setCursor(0, 1);
+  lcd.print("   as  USER ");
+  lcd.print(user);
+  normal_mode = true;
+  first_read = false;
+  delay(3000);
+  lcd.setCursor(0, 0);
+  lcd.print("Scan card to be");
+  lcd.setCursor(0, 1);
+  lcd.print("granted ACCESS!");
+  Serial.print("New user stored as USER ");
+  Serial.print(user);
+  Serial.println("");
 }
 
 
-//Compare the 4 bytes of the users and the received ID
+//////////////////// Compare the 4 bytes of the users and the received ID //////////////////
 boolean compareArray(byte array1[], byte array2[])
 {
   if (array1[0] != array2[0])return (false);
