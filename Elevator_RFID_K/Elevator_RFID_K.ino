@@ -100,19 +100,19 @@ uint8_t successRead;    // Variable integer to keep if we have Successful Read f
 //Output pins
 const int RED_LED = 12;
 const int GREEN_LED = 13;
-const bool PLS_SIGNAL = 8;    //ModBus????
+const bool PLS_SIGNAL = 8;
 
 
 //Variables
-boolean door_opened = false;
 boolean first_read = false;
 boolean normal_mode = true;
 boolean countdown = false;
 int timer = 0;
 int user_added = 0;
-int  add_ID_counter = 0;
 
 unsigned long nextTimeout = 0;
+long interval = 1000;
+long previousMillis = 2000;
 
 /**
    Initialize.
@@ -141,10 +141,7 @@ void setup() {
 
   //Config of the LCD screen
   lcd.begin(16, 2);
-  lcd.setCursor(0, 0);
-  lcd.print("Scan card to be");
-  lcd.setCursor(0, 1);
-  lcd.print("granted ACCESS!");
+  idleLCDState();
 }
 
 byte ActualUID[4];                     //This will store the ID each time we read a new ID code
@@ -167,53 +164,52 @@ void loop() {
 
     if (countdown)
     {
-      if (add_ID_counter > 300)
+      startTimer(8000);
+      unsigned long currentMillis = millis();
+      Serial.println("First Millis");
+      Serial.print(millis());
+      
+
+      if (currentMillis - previousMillis >= interval)
+      {
+        lcd.setCursor(15, 1);
+        lcd.print("5");
+        previousMillis = currentMillis;
+        Serial.println(previousMillis);
+      } else if (previousMillis - currentMillis >= interval)
+      {
+        lcd.setCursor(15, 1);
+        lcd.print("4");
+        previousMillis = currentMillis;
+        Serial.println(previousMillis);
+      } else if (previousMillis - currentMillis >= interval)
+      {
+        lcd.setCursor(15, 1);
+        lcd.print("3");
+        previousMillis = currentMillis;
+      } else if (previousMillis - currentMillis >= interval )
+      {
+        lcd.setCursor(15, 1);
+        lcd.print("2");
+        previousMillis = currentMillis;
+      } else if (previousMillis - currentMillis >= interval)
+      {
+        lcd.setCursor(15, 1);
+        lcd.print("1");
+        previousMillis = currentMillis;
+      } else if (timerHasExpired)
       {
         countdown = false;
         first_read = false;
-        add_ID_counter = millis();
         lcd.setCursor(0, 0);
         lcd.print("New ID  canceled");
         lcd.setCursor(0, 1);
         lcd.print("                ");
         Serial.println("Last action: New user canceled");
-        delay(3000);
-        lcd.setCursor(0, 0);
-        lcd.print("Scan card to be");
-        lcd.setCursor(0, 1);
-        lcd.print("granted ACCESS!");
+        delay(2000);
+        idleLCDState();
       }
-
-      long timeNow = millis();
-
-      if (timeNow - add_ID_counter == 5000)
-      {
-        lcd.setCursor(15, 1);
-        lcd.print("1");
-      } else if (timeNow - add_ID_counter >= 1000)
-      {
-        lcd.setCursor(15, 1);
-        lcd.print("2");
-      } else if (timeNow - add_ID_counter >= 2000)
-      {
-        lcd.setCursor(15, 1);
-        lcd.print("3");
-      } else if (timeNow - add_ID_counter >= 3000)
-      {
-        lcd.setCursor(15, 1);
-        lcd.print("4");
-      } else if (timeNow - add_ID_counter >= 4000)
-      {
-        lcd.setCursor(15, 1);
-        lcd.print("5");
-      }
-
-
-
-      //add_ID_counter = add_ID_counter + 1;
-      //delay(10);
     }
-
 
     for (uint8_t reader = 0; reader < NR_OF_READERS; reader++)
       // Check if there are any new ID card in front of the sensor
@@ -226,17 +222,13 @@ void loop() {
           for (byte i = 0; i < mfrc522[reader].uid.size; i++) {
             ActualUID[i] = mfrc522[reader].uid.uidByte[i];
           }
-
           //Compare the UID and check if the new iD is on the user listz
-
-
           if (first_read)
           {
             if (compareArray(ActualUID, USER1))
             {
               countdown = false;
-              add_ID_counter = 0;
-
+              nextTimeout = 0;
               normal_mode = false;
               lcd.setCursor(0, 0);
               lcd.print("Place New ID in:");
@@ -268,16 +260,15 @@ void loop() {
               lcd.print(" Access granted ");
               lcd.setCursor(0, 1);
               lcd.print("  MASTER  USER  ");
-              door_opened = true;
-              first_read = true;
-              countdown = true;
               granted();
+              delay(2000);
               lcd.setCursor(0, 0);
-              lcd.print("Put  MASTER card");
+              lcd.print("Scan MASTERCARD");
               lcd.setCursor(0, 1);
-              lcd.print("for new ID     6");
+              lcd.print("to add new ID  6");
               Serial.println("Last use: MASTER CARD");
-
+              countdown = true;
+              first_read = true;
             }
             else if (compareArray(ActualUID, USER2))
             {
@@ -301,13 +292,9 @@ void loop() {
               lcd.print(" Access  denied ");
               lcd.setCursor(0, 1);
               lcd.print("   UNKNOWN ID   ");
-              door_opened = false;
               first_read = false;
               denied();
-              lcd.setCursor(0, 0);
-              lcd.print("Scan card to be");
-              lcd.setCursor(0, 1);
-              lcd.print("granted ACCESS!");
+              idleLCDState();
               Serial.println("Last use: UNKNOWN ID, Access DENIED");
             }
           }
@@ -339,10 +326,7 @@ void loop() {
             lcd.print("  User list is  ");
             lcd.setCursor(0, 1);
             lcd.print("      FULL      ");
-            lcd.setCursor(0, 0);
-            lcd.print("Scan card to be");
-            lcd.setCursor(0, 1);
-            lcd.print("granted ACCESS!");
+            idleLCDState();
             Serial.println("Last action: User list is full.");
           }
 
@@ -386,26 +370,56 @@ void dump_byte_array(byte *buffer, byte bufferSize) {
 }
 
 /////////////////////////////////////////  Access Granted    ///////////////////////////////////
-void granted () {
+void granted ()
+{
   digitalWrite(RED_LED, LOW);       // Make sure the red LED is off
   digitalWrite(GREEN_LED, HIGH);    // Make sure the green LED turns on
   digitalWrite(PLS_SIGNAL, HIGH);   // Give access to fourth floor
-  delay (5000);
-  digitalWrite(PLS_SIGNAL, LOW);    // Make sure the access to the fourth floor is closed after 5 seconds
-  digitalWrite(RED_LED, LOW);       // Make sure red LED is off
-  digitalWrite(GREEN_LED, LOW);     // Make sure green LED is off after 5 seconds
-  lcd.clear();
+  startTimer(5000);
+  if (timerHasExpired)
+  {
+    digitalWrite(PLS_SIGNAL, LOW);    // Make sure the access to the fourth floor is closed after 5 seconds
+    digitalWrite(RED_LED, LOW);       // Make sure red LED is off
+    digitalWrite(GREEN_LED, LOW);     // Make sure green LED is off after 5 seconds
+    //lcd.clear();
+  }
 }
 
 ///////////////////////////////////////// Access Denied  ///////////////////////////////////
-void denied() {
+void denied()
+{
   digitalWrite(RED_LED, HIGH);     // Make sure red LED is on
   digitalWrite(GREEN_LED, LOW);    // Make sure green LED is off
   digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
-  delay(3000);
-  digitalWrite(PLS_SIGNAL, LOW);    // Turn off acccess to fourth floor
-  digitalWrite(GREEN_LED, LOW);     // Make sure the green LED is off
-  digitalWrite(RED_LED, LOW);       // Make sure the red LED is off after 2 seconds
+  startTimer(3000);
+  if (timerHasExpired)
+  {
+    digitalWrite(PLS_SIGNAL, LOW);    // Turn off acccess to fourth floor
+    digitalWrite(GREEN_LED, LOW);     // Make sure the green LED is off
+    digitalWrite(RED_LED, LOW);       // Make sure the red LED is off after 2 seconds
+    lcd.clear();
+  }
+}
+
+///////////////////////////////////////// New User Added  /////////////////////////////////////
+void newUserAdded()
+{
+  unsigned long currentMillis = millis(); 
+  digitalWrite(RED_LED, LOW);     // Make sure red LED is on
+  digitalWrite(GREEN_LED, HIGH);    // Make sure green LED is off
+  digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
+ 
+  lcd.clear();
+}
+
+///////////////////////////////////////// New User canceled  /////////////////////////////////////
+void newUserCanceled()
+{
+  unsigned long currentMillis = millis(); 
+  digitalWrite(RED_LED, LOW);     // Make sure red LED is on
+  digitalWrite(GREEN_LED, HIGH);    // Make sure green LED is off
+  digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
+ 
   lcd.clear();
 }
 
@@ -418,13 +432,9 @@ void printAccessGranted(int user)
   lcd.setCursor(5, 1);
   lcd.print("USER ");
   lcd.print(user);
-  door_opened = true;
   first_read = true;
   granted();
-  lcd.setCursor(0, 0);
-  lcd.print("Scan card to be");
-  lcd.setCursor(0, 1);
-  lcd.print("granted ACCESS!");
+  idleLCDState();
   Serial.print("Last use: USER");
   Serial.print(user);
   Serial.println("");
@@ -446,10 +456,7 @@ void printAddedUser(int user, byte USER[])
   normal_mode = true;
   first_read = false;
   delay(3000);
-  lcd.setCursor(0, 0);
-  lcd.print("Scan card to be");
-  lcd.setCursor(0, 1);
-  lcd.print("granted ACCESS!");
+  idleLCDState();
   Serial.print("New user stored as USER ");
   Serial.print(user);
   Serial.println("");
@@ -475,4 +482,33 @@ boolean compareArray(byte array1[], byte array2[])
 void startTimer(unsigned long duration)
 {
   nextTimeout = millis() + duration;
+}
+
+/**
+   Checks if the timer has expired. If the timer has expired,
+   true is returned. If the timer has not yet expired,
+   false is returned.
+
+   @return true if timer has expired, false if not
+*/
+boolean timerHasExpired()
+{
+  boolean hasExpired = false;
+  if (millis() > nextTimeout)
+  {
+    hasExpired = true;
+  }
+  else
+  {
+    hasExpired = false;
+  }
+  return hasExpired;
+}
+
+void idleLCDState()
+{
+  lcd.setCursor(0, 0);
+  lcd.print("Scan card to be");
+  lcd.setCursor(0, 1);
+  lcd.print("granted ACCESS!");
 }
