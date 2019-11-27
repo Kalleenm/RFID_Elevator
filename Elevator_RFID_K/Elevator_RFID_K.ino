@@ -86,7 +86,7 @@
 byte ssPins[] = {SS_1_PIN, SS_2_PIN};
 
 // Create MFRC522 instance.
-MFRC522 mfrc522[NR_OF_READERS];  
+MFRC522 mfrc522[NR_OF_READERS];
 
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
@@ -178,17 +178,16 @@ void loop() {
       } else if (millis() - startMillis <= 4*interval )
       {
         lcd.setCursor(15, 1);
-        lcd.print("2");
       } else if (millis() - startMillis <= 5*interval)
       {
         lcd.setCursor(15, 1);
         lcd.print("1");
-      } else if (timerHasExpired)
+      } else
       {
         countdown = false;
         first_read = false;
         lcd.setCursor(0, 0);
-        lcd.print("New ID  canceled");
+        lcd.print("New ID canceled");
         lcd.setCursor(0, 1);
         lcd.print("                ");
         Serial.println("Last action: New user canceled");
@@ -199,92 +198,89 @@ void loop() {
 
     for (uint8_t reader = 0; reader < NR_OF_READERS; reader++)
       // Check if there are any new ID card in front of the sensor
-      if ( mfrc522[reader].PICC_IsNewCardPresent())
+      if ( mfrc522[reader].PICC_IsNewCardPresent() && mfrc522[reader].PICC_ReadCardSerial())
       {
-        //Select the found card
-        if ( mfrc522[reader].PICC_ReadCardSerial())
+        // We store the read ID into 4 bytes with a for loop
+        for (byte i = 0; i < mfrc522[reader].uid.size; i++) {
+          ActualUID[i] = mfrc522[reader].uid.uidByte[i];
+        }
+        //Compare the UID and check if the new iD is on the user listz
+        if (first_read)
         {
-          // We store the read ID into 4 bytes with a for loop
-          for (byte i = 0; i < mfrc522[reader].uid.size; i++) {
-            ActualUID[i] = mfrc522[reader].uid.uidByte[i];
-          }
-          //Compare the UID and check if the new iD is on the user listz
-          if (first_read)
+          if (compareArray(ActualUID, USER1))
           {
-            if (compareArray(ActualUID, USER1))
-            {
-              countdown = false;
-              nextTimeout = 0;
-              normal_mode = false;
-              lcd.setCursor(0, 0);
-              lcd.print("Place New ID in:");
-              lcd.setCursor(0, 1);
-              lcd.print("       3        ");
-              delay(1000);
-              lcd.setCursor(0, 1);
-              lcd.print("       2        ");
-              delay(1000);
-              lcd.setCursor(0, 1);
-              lcd.print("       1       ");
-              delay(1000);
-              lcd.setCursor(0, 1);
-              lcd.print("      NOW!      ");
+            countdown = false;
+            nextTimeout = 0;
+            normal_mode = false;
+            lcd.setCursor(0, 0);
+            lcd.print("Place New ID in:");
+            lcd.setCursor(0, 1);
+            lcd.print("       3        ");
+            delay(1000);
+            lcd.setCursor(0, 1);
+            lcd.print("       2        ");
+            delay(1000);
+            lcd.setCursor(0, 1);
+            lcd.print("       1       ");
+            delay(1000);
+            lcd.setCursor(0, 1);
+            lcd.print("      NOW!      ");
 
-            }
-            else
-            {
-              first_read = false;
-
-            }
           }
-
-          if (!first_read)
+          else
           {
-            if (compareArray(ActualUID, USER1))
-            {
-              lcd.setCursor(0, 0);
-              lcd.print(" Access granted ");
-              lcd.setCursor(0, 1);
-              lcd.print("  MASTER  USER  ");
-              setPhase (1);
-              delay(2000);
-              lcd.setCursor(0, 0);
-              lcd.print("Scan MASTERCARD");
-              lcd.setCursor(0, 1);
-              lcd.print("to add new ID  6");
-              Serial.println("Last use: MASTER CARD");
-              countdown = true;
-              first_read = true;
-            }
-            else if (compareArray(ActualUID, USER2))
-            {
-              printAccessGranted(2);
-            }
-            else if (compareArray(ActualUID, USER3))
-            {
-              printAccessGranted(3);
-            }
-            else if (compareArray(ActualUID, USER4))
-            {
-              printAccessGranted(4);
-            }
-            else if (compareArray(ActualUID, USER5))
-            {
-              printAccessGranted(5);
-            }
-            else
-            {
-              lcd.setCursor(0, 0);
-              lcd.print(" Access  denied ");
-              lcd.setCursor(0, 1);
-              lcd.print("   UNKNOWN ID   ");
-              first_read = false;
-              setPhase (2);
-              idleLCDState();
-              Serial.println("Last use: UNKNOWN ID, Access DENIED");
-            }
+            first_read = false;
+
           }
         }
+
+        if (!first_read)
+        {
+          if (compareArray(ActualUID, USER1))
+          {
+            lcd.setCursor(0, 0);
+            lcd.print(" Access granted ");
+            lcd.setCursor(0, 1);
+            lcd.print("  MASTER  USER  ");
+            setPhase (1);
+            delay(2000);
+            lcd.setCursor(0, 0);
+            lcd.print("Scan MASTERCARD");
+            lcd.setCursor(0, 1);
+            lcd.print("to add new ID  6");
+            Serial.println("Last use: MASTER CARD");
+            countdown = true;
+            first_read = true;
+          }
+          else if (compareArray(ActualUID, USER2))
+          {
+            printAccessGranted(2);
+          }
+          else if (compareArray(ActualUID, USER3))
+          {
+            printAccessGranted(3);
+          }
+          else if (compareArray(ActualUID, USER4))
+          {
+            printAccessGranted(4);
+          }
+          else if (compareArray(ActualUID, USER5))
+          {
+            printAccessGranted(5);
+          }
+          else
+          {
+            lcd.setCursor(0, 0);
+            lcd.print(" Access  denied ");
+            lcd.setCursor(0, 1);
+            lcd.print("   UNKNOWN ID   ");
+            first_read = false;
+            setPhase (2);
+            idleLCDState();
+            Serial.println("Last use: UNKNOWN ID, Access DENIED");
+          }
+        }
+
 
       }
   }//end  normal mode
@@ -293,11 +289,8 @@ void loop() {
   {
     // Revisamos si hay nuevas tarjetas  presentes
     for (uint8_t reader = 0; reader < NR_OF_READERS; reader++)
-      if ( mfrc522[reader].PICC_IsNewCardPresent())
+      if ( mfrc522[reader].PICC_IsNewCardPresent() && mfrc522[reader].PICC_ReadCardSerial())
       {
-        //Seleccionamos una tarjeta
-        if ( mfrc522[reader].PICC_ReadCardSerial())
-        {
           // Enviamos serialemente su UID
 
           for (byte i = 0; i < mfrc522[reader].uid.size; i++) {
@@ -337,7 +330,7 @@ void loop() {
             printAddedUser(2, USER2);
           }
 
-        }
+        
 
       }
   }//end  ID add mode
