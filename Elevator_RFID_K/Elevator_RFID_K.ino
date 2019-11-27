@@ -5,43 +5,43 @@
   author Komolvae.
 
   Pin layout used:
-  ----------------------------------------------------------------------------------------
-                     MFRC522      Arduino                  Cable cat 5e
-                     Reader/LCD   Yün                      Colour
-  Signal             LEDS         Pin                      Management
-  ----------------------------------------------------------------------------------------
-  //LCD
-  Ground             LCD 1        GND                      Black
-  VDD(5V)            LCD 2        5V                       Red
-  Cotrast Adjust     LCD 3        Midpin potetiometer
-  Register Select    LCD 4        7                        Orange white    1
-  Read/Write Select  LCD 5        GND                      Black
-  Enable             LCD 6        6~                       Orange          1
-  Data Lines D4      LCD 11       5~                       Brown white     1
-  Data Lines D5      LCD 12       4                        Brown           1
-  Data Lines D6      LCD 13       3~                       Green white     1
-  Data Lines D7      LCD 14       2                        Green           1
-  Backlight Power    LCD 15       5V                       Red
-  Backlight Ground   LCD 16       GND                      Black
+  +------------------------------------------------------------------------------------------+
+  |                    MFRC522      Arduino                  Cable cat 5e                    |
+  |                    Reader/LCD   Yün                      Colour                          |
+  | Signal             LEDS         Pin                      Management                      |
+  | /////////////////////////////////////// LCD  /////////////////////////////////////////// |
+  | Ground             LCD 1        GND                      Black                           |
+  | VDD(5V)            LCD 2        5V                       Red                             |
+  | Cotrast Adjust     LCD 3        Midpin potetiometer                                      |
+  | Register Select    LCD 4        7                        Orange white    1               |
+  | Read/Write Select  LCD 5        GND                      Black                           |
+  | Enable             LCD 6        6~                       Orange          1               |
+  | Data Lines D4      LCD 11       5~                       Brown white     1               |
+  | Data Lines D5      LCD 12       4                        Brown           1               |
+  | Data Lines D6      LCD 13       3~                       Green white     1               |
+  | Data Lines D7      LCD 14       2                        Green           1               |
+  | Backlight Power    LCD 15       5V                       Red                             |
+  | Backlight Ground   LCD 16       GND                      Black                           |
+  |  /////////////////////////////////////// Power ///////////////////////////////////////// |
+  | 5v                                                       Blue white      1               |
+  | 0V                                                       Blue            1               |
+  |                                                                                          |
+  | //////////////////////////////////////// LEDS ////////////////////////////////////////// |
+  | 5V Red Led         +            12                       Orange          2               |
+  | 0V Red Led         -            GND + 330k ohm           Black                           |
+  | 5V Green Led       +            13                       Orange white    2               |
+  | 0V Green Led       -            GND + 330k ohm           Black                           |
+  |                                                                                          |
+  | /////////////////////////////////////// RFID /////////////////////////////////////////// |
+  | RFID 3,3V                                                Brown           2               |
+  | RST/Reset          RST          9                        Brown white     2               |
+  | SPI SDA            SDA(SS)      10,11                    Green white     2               |
+  | SPI MOSI           MOSI         ICSP-4                   Blue white      2               |
+  | SPI MISO           MISO         ICSP-1                   Blue            2               |
+  | SPI SCK            SCK          ICSP-3                   Green           2               |
+  | //////////////////////////////////////////+///////////////////////////////////////////// |
+  +------------------------------------------------------------------------------------------+
 
-  5v                                                       Blue white      1
-  0V                                                       Blue            1
-
-  //////////////////////////////////////// LEDS //////////////////////////////////////////
-  5V Red Led         +            12                       Orange          2
-  0V Red Led         -            GND + 330k ohm           Black
-  5V Green Led       +            13                       Orange white    2
-  0V Green Led       -            GND + 330k ohm           Black
-
-
-  //RFID
-  RFID 3,3V                                                Brown           2
-  RST/Reset          RST          9                        Brown white     2
-  SPI SDA            SDA(SS)      10,11                    Green white     2
-  SPI MOSI           MOSI         ICSP-4                   Blue white      2
-  SPI MISO           MISO         ICSP-1                   Blue            2
-  SPI SCK            SCK          ICSP-3                   Green           2
-  //////////////////////////////////////////+/////////////////////////////////////////////
                    Simple Work Flow (not limited to) :
   +<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<+
   |                       +-------------+                                |
@@ -70,39 +70,31 @@
   |  +-------------+
   |                  +------------+
   +------------------+    EXIT    |
-                     +------------+
+                    +------------+
 */
 
 #include <SPI.h>
 #include <MFRC522.h>
-#include <EEPROM.h>
+#include <LiquidCrystal.h>
 
-#define RST_PIN         9          // Configurable, see typical pin layout above
+#define RST_PIN         9         // Configurable, see typical pin layout above
 #define SS_1_PIN        10        // Configurable, take a unused pin, only HIGH/LOW required, must be diffrent to SS 2
-#define SS_2_PIN        11         // Configurable, take a unused pin, only HIGH/LOW required, must be diffrent to SS 1
+#define SS_2_PIN        11        // Configurable, take a unused pin, only HIGH/LOW required, must be diffrent to SS 1
 
 #define NR_OF_READERS   2
 
 byte ssPins[] = {SS_1_PIN, SS_2_PIN};
 
-MFRC522 mfrc522[NR_OF_READERS];   // Create MFRC522 instance.
-
-//LCD config.
-#include <LiquidCrystal.h>
+// Create MFRC522 instance.
+MFRC522 mfrc522[NR_OF_READERS];  
 
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
-
-bool programMode = false;
-
-uint8_t successRead;    // Variable integer to keep if we have Successful Read from Reader
-
 
 //Output pins
 const int RED_LED = 12;
 const int GREEN_LED = 13;
 const bool PLS_SIGNAL = 8;
-
 
 //Variables
 boolean first_read = false;
@@ -114,10 +106,7 @@ int user_added = 0;
 unsigned long nextTimeout = 0;
 long interval = 1000;
 long previousMillis = 0;
-int ledState = LOW; 
-
-int state = S_IDLE;
-
+int ledState = LOW;
 /**
    Initialize.
 */
@@ -148,7 +137,7 @@ void setup() {
   idleLCDState();
 }
 
-byte ActualUID[4];                     //This will store the ID each time we read a new ID code
+byte ActualUID[4];                         //This will store the ID each time we read a new ID code
 
 byte USER1[4] = {0x77, 0x5A, 0x63, 0x3C} ; //Master ID code Change it for yor tag. First use the READ exampel and check your ID
 
@@ -264,7 +253,7 @@ void loop() {
               lcd.print(" Access granted ");
               lcd.setCursor(0, 1);
               lcd.print("  MASTER  USER  ");
-              granted();
+              setPhase (1);
               delay(2000);
               lcd.setCursor(0, 0);
               lcd.print("Scan MASTERCARD");
@@ -297,7 +286,7 @@ void loop() {
               lcd.setCursor(0, 1);
               lcd.print("   UNKNOWN ID   ");
               first_read = false;
-              denied();
+              setPhase (2);
               idleLCDState();
               Serial.println("Last use: UNKNOWN ID, Access DENIED");
             }
@@ -372,63 +361,6 @@ void dump_byte_array(byte *buffer, byte bufferSize) {
   }
 }
 
-//////////////////////////////////  Access Granted    //////////////////////////////////
-void granted ()
-{
-  digitalWrite(RED_LED, LOW);       // Make sure the red LED is off
-  digitalWrite(GREEN_LED, HIGH);    // Make sure the green LED turns on
-  digitalWrite(PLS_SIGNAL, HIGH);   // Give access to fourth floor
-  startTimer(5000);
-  if (timerHasExpired)
-  {
-    digitalWrite(PLS_SIGNAL, LOW);    // Make sure the access to the fourth floor is closed after 5 seconds
-    digitalWrite(RED_LED, LOW);       // Make sure red LED is off
-    digitalWrite(GREEN_LED, LOW);     // Make sure green LED is off after 5 seconds
-    //lcd.clear();
-  }
-}
-
-//////////////////////////////////// Access Denied  ////////////////////////////////////
-void denied()
-{
-  digitalWrite(RED_LED, HIGH);     // Make sure red LED is on
-  digitalWrite(GREEN_LED, LOW);    // Make sure green LED is off
-  digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
-  startTimer(3000);
-  if (timerHasExpired)
-  {
-    digitalWrite(PLS_SIGNAL, LOW);    // Turn off acccess to fourth floor
-    digitalWrite(GREEN_LED, LOW);     // Make sure the green LED is off
-    digitalWrite(RED_LED, LOW);       // Make sure the red LED is off after 2 seconds
-    lcd.clear();
-  }
-}
-
-//////////////////////////////////// New User Added  ///////////////////////////////////
-void newUserAdded()
-{
-  unsigned long currentMillis = millis();
-  digitalWrite(RED_LED, LOW);     // Make sure red LED is on
-  digitalWrite(GREEN_LED, HIGH);    // Make sure green LED is off
-  digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
-
-  lcd.clear();
-}
-
-///////////////////////////////// New User canceled  ///////////////////////////////////
-void newUserCanceled()
-{
-  switch (state)
-  {
-    case S_LED_ON
-        digitalWrite(RED_LED, LOW);     // Make sure red LED is on
-      digitalWrite(GREEN_LED, HIGH);    // Make sure green LED is off
-      digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
-  }
-
-  lcd.clear();
-}
-
 //////////////////////////////// Print Access to LCD  //////////////////////////////////
 void printAccessGranted(int user)
 {
@@ -439,7 +371,7 @@ void printAccessGranted(int user)
   lcd.print("USER ");
   lcd.print(user);
   first_read = true;
-  granted();
+  setPhase (1);
   idleLCDState();
   Serial.print("Last use: USER");
   Serial.print(user);
@@ -522,67 +454,33 @@ boolean timerHasExpired()
 }
 
 
-
-switch (state)
+void setPhase (int phase)
 {
-case S_IDLE:
-  digitalWrite(RED_LED, LOW);     // Make sure red LED is off
-  digitalWrite(GREEN_LED, LOW);    // Make sure green LED is off
-  digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
-  if (granted())
+  switch (phase)
   {
-    startTimer(5000);
-    state = ACCESS_GRANTED;
-  }
-  if (denied())
-  {
-    startTimer(3000);
-    state = ACCESS_DENIED;
-  }
-  if (newUserAdded())
-  {
-    startTimer(1000);
-    state = NEW_USER;
-  }
-  break;
+    case 1: // ACCESS GRANTED
+      digitalWrite(RED_LED, LOW);      // Make sure red LED is off
+      digitalWrite(GREEN_LED, HIGH);   // Make sure green LED is on
+      digitalWrite(PLS_SIGNAL, HIGH);  // Make sure PLS signal is high
+      break;
 
-case ACCESS_GRANTED:
-  digitalWrite(RED_LED, LOW);     // Make sure red LED is off
-  digitalWrite(GREEN_LED, HIGH);    // Make sure green LED is on
-  digitalWrite(PLS_SIGNAL, HIGH);   // Make sure PLS signal is high
-  if (timerHasExpired())
-  {
-    state = S_IDLE;
+    case 2: // ACCESS DENIED
+      digitalWrite(RED_LED, HIGH);     // Make sure red LED is on
+      digitalWrite(GREEN_LED, LOW);    // Make sure green LED is off
+      digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
+      break;
+
+    case 3: // NEW USER ADDED
+      digitalWrite(RED_LED, LOW);      // Make sure red LED is on
+      digitalWrite(GREEN_LED, HIGH);   // Make sure green LED is off
+      digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
+      break;
+
+    case 4: // NEW USER CANCELED
+      digitalWrite(RED_LED, HIGH);     // Make sure red LED is on
+      digitalWrite(GREEN_LED, LOW);    // Make sure green LED is off
+      digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
+      break;
+
   }
-  break;
-
-case ACCESS_DENIED:
-  digitalWrite(RED_LED, HIGH);     // Make sure red LED is on
-  digitalWrite(GREEN_LED, LOW);    // Make sure green LED is off
-  digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
-  if (timerHasExpired());
-  {
-    state = S_IDLE
-  }
-
-case NEW_USER:
-  digitalWrite(RED_LED, LOW);     // Make sure red LED is on
-  digitalWrite(GREEN_LED, HIGH);    // Make sure green LED is off
-  digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
-  if (timerHasExpired());
-  {
-    if (currentMillis - previousMillis >= interval) {
-      // save the last time you blinked the LED
-      previousMillis = currentMillis;
-
-      // if the LED is off turn it on and vice-versa:
-      if (ledState == LOW) {
-        ledState = HIGH;
-      } else {
-        ledState = LOW;
-      }
-  digitalWrite(RED_LED, ledState);     // Make sure red LED is on
-  digitalWrite(GREEN_LED, ledState);    // Make sure green LED is off
-  digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
-
-    }
+}
