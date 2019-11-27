@@ -70,7 +70,7 @@
   |  +-------------+
   |                  +------------+
   +------------------+    EXIT    |
-                    +------------+
+                     +------------+
 */
 
 #include <SPI.h>
@@ -294,7 +294,6 @@ void loop() {
           // Enviamos serialemente su UID
 
           for (byte i = 0; i < mfrc522[reader].uid.size; i++) {
-
             ActualUID[i] = mfrc522[reader].uid.uidByte[i];
           }
 
