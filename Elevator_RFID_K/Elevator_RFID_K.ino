@@ -10,12 +10,6 @@
                      Reader/LCD   Yün                      Colour
   Signal             LEDS         Pin                      Management
   ----------------------------------------------------------------------------------------
-  //LEDS
-  5V Red Led         +            12                       Orange          2
-  0V Red Led         -            GND + 330k ohm           Black
-  5V Green Led       +            13                       Orange white    2
-  0V Green Led       -            GND + 330k ohm           Black
-
   //LCD
   Ground             LCD 1        GND                      Black
   VDD(5V)            LCD 2        5V                       Red
@@ -33,6 +27,13 @@
   5v                                                       Blue white      1
   0V                                                       Blue            1
 
+  //////////////////////////////////////// LEDS //////////////////////////////////////////
+  5V Red Led         +            12                       Orange          2
+  0V Red Led         -            GND + 330k ohm           Black
+  5V Green Led       +            13                       Orange white    2
+  0V Green Led       -            GND + 330k ohm           Black
+
+
   //RFID
   RFID 3,3V                                                Brown           2
   RST/Reset          RST          9                        Brown white     2
@@ -40,7 +41,7 @@
   SPI MOSI           MOSI         ICSP-4                   Blue white      2
   SPI MISO           MISO         ICSP-1                   Blue            2
   SPI SCK            SCK          ICSP-3                   Green           2
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////+/////////////////////////////////////////////
                    Simple Work Flow (not limited to) :
   +<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<+
   |                       +-------------+                                |
@@ -112,7 +113,10 @@ int user_added = 0;
 
 unsigned long nextTimeout = 0;
 long interval = 1000;
-long previousMillis = 2000;
+long previousMillis = 0;
+int ledState = LOW; 
+
+int state = S_IDLE;
 
 /**
    Initialize.
@@ -168,7 +172,7 @@ void loop() {
       unsigned long currentMillis = millis();
       Serial.println("First Millis");
       Serial.print(millis());
-      
+
 
       if (currentMillis - previousMillis >= interval)
       {
@@ -357,8 +361,7 @@ void loop() {
   }//end  ID add mode
 }
 
-
-//////////////////////////////////////////////// FUNCTIONS //////////////////////////////////////////////////
+///////////////////////////////////// FUNCTIONS ////////////////////////////////////////
 /**
   Helper routine to dump a byte array as hex values to Serial.
 */
@@ -369,7 +372,7 @@ void dump_byte_array(byte *buffer, byte bufferSize) {
   }
 }
 
-/////////////////////////////////////////  Access Granted    ///////////////////////////////////
+//////////////////////////////////  Access Granted    //////////////////////////////////
 void granted ()
 {
   digitalWrite(RED_LED, LOW);       // Make sure the red LED is off
@@ -385,7 +388,7 @@ void granted ()
   }
 }
 
-///////////////////////////////////////// Access Denied  ///////////////////////////////////
+//////////////////////////////////// Access Denied  ////////////////////////////////////
 void denied()
 {
   digitalWrite(RED_LED, HIGH);     // Make sure red LED is on
@@ -401,29 +404,32 @@ void denied()
   }
 }
 
-///////////////////////////////////////// New User Added  /////////////////////////////////////
+//////////////////////////////////// New User Added  ///////////////////////////////////
 void newUserAdded()
 {
-  unsigned long currentMillis = millis(); 
+  unsigned long currentMillis = millis();
   digitalWrite(RED_LED, LOW);     // Make sure red LED is on
   digitalWrite(GREEN_LED, HIGH);    // Make sure green LED is off
   digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
- 
+
   lcd.clear();
 }
 
-///////////////////////////////////////// New User canceled  /////////////////////////////////////
+///////////////////////////////// New User canceled  ///////////////////////////////////
 void newUserCanceled()
 {
-  unsigned long currentMillis = millis(); 
-  digitalWrite(RED_LED, LOW);     // Make sure red LED is on
-  digitalWrite(GREEN_LED, HIGH);    // Make sure green LED is off
-  digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
- 
+  switch (state)
+  {
+    case S_LED_ON
+        digitalWrite(RED_LED, LOW);     // Make sure red LED is on
+      digitalWrite(GREEN_LED, HIGH);    // Make sure green LED is off
+      digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
+  }
+
   lcd.clear();
 }
 
-////////////////////////////////////// Print Access to LCD  ///////////////////////////////////
+//////////////////////////////// Print Access to LCD  //////////////////////////////////
 void printAccessGranted(int user)
 {
   lcd.clear();
@@ -440,7 +446,7 @@ void printAccessGranted(int user)
   Serial.println("");
 }
 
-//////////////////////////////////// Print added user to LCD ///////////////////////////////
+////////////////////////////// Print added user to LCD /////////////////////////////////
 void printAddedUser(int user, byte USER[])
 {
   USER[0] = ActualUID[0];
@@ -462,8 +468,7 @@ void printAddedUser(int user, byte USER[])
   Serial.println("");
 }
 
-
-//////////////////// Compare the 4 bytes of the users and the received ID //////////////////
+//////////////// Compare the 4 bytes of the users and the received ID //////////////////
 boolean compareArray(byte array1[], byte array2[])
 {
   if (array1[0] != array2[0])return (false);
@@ -473,6 +478,16 @@ boolean compareArray(byte array1[], byte array2[])
   return (true);
 }
 
+//////////////////////////////// Print idle LCD state  /////////////////////////////////
+void idleLCDState()
+{
+  lcd.setCursor(0, 0);
+  lcd.print("Scan card to be");
+  lcd.setCursor(0, 1);
+  lcd.print("granted ACCESS!");
+}
+
+////////////////////////////////// Starts the timer ////////////////////////////////////
 /**
   Starts the timer and set the timer to expire after the
   number of milliseconds given by the parameter duration.
@@ -484,6 +499,7 @@ void startTimer(unsigned long duration)
   nextTimeout = millis() + duration;
 }
 
+//////////////////////// Checks if the timer has expired ///////////////////////////////
 /**
    Checks if the timer has expired. If the timer has expired,
    true is returned. If the timer has not yet expired,
@@ -505,10 +521,68 @@ boolean timerHasExpired()
   return hasExpired;
 }
 
-void idleLCDState()
+
+
+switch (state)
 {
-  lcd.setCursor(0, 0);
-  lcd.print("Scan card to be");
-  lcd.setCursor(0, 1);
-  lcd.print("granted ACCESS!");
-}
+case S_IDLE:
+  digitalWrite(RED_LED, LOW);     // Make sure red LED is off
+  digitalWrite(GREEN_LED, LOW);    // Make sure green LED is off
+  digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
+  if (granted())
+  {
+    startTimer(5000);
+    state = ACCESS_GRANTED;
+  }
+  if (denied())
+  {
+    startTimer(3000);
+    state = ACCESS_DENIED;
+  }
+  if (newUserAdded())
+  {
+    startTimer(1000);
+    state = NEW_USER;
+  }
+  break;
+
+case ACCESS_GRANTED:
+  digitalWrite(RED_LED, LOW);     // Make sure red LED is off
+  digitalWrite(GREEN_LED, HIGH);    // Make sure green LED is on
+  digitalWrite(PLS_SIGNAL, HIGH);   // Make sure PLS signal is high
+  if (timerHasExpired())
+  {
+    state = S_IDLE;
+  }
+  break;
+
+case ACCESS_DENIED:
+  digitalWrite(RED_LED, HIGH);     // Make sure red LED is on
+  digitalWrite(GREEN_LED, LOW);    // Make sure green LED is off
+  digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
+  if (timerHasExpired());
+  {
+    state = S_IDLE
+  }
+
+case NEW_USER:
+  digitalWrite(RED_LED, LOW);     // Make sure red LED is on
+  digitalWrite(GREEN_LED, HIGH);    // Make sure green LED is off
+  digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
+  if (timerHasExpired());
+  {
+    if (currentMillis - previousMillis >= interval) {
+      // save the last time you blinked the LED
+      previousMillis = currentMillis;
+
+      // if the LED is off turn it on and vice-versa:
+      if (ledState == LOW) {
+        ledState = HIGH;
+      } else {
+        ledState = LOW;
+      }
+  digitalWrite(RED_LED, ledState);     // Make sure red LED is on
+  digitalWrite(GREEN_LED, ledState);    // Make sure green LED is off
+  digitalWrite(PLS_SIGNAL, LOW);   // Make sure PLS signal is low
+
+    }
